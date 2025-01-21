@@ -19,6 +19,7 @@ namespace omech.Services
         object IuRawSlit(IuRawSlitModel rawSlitModel);
         object IuRawSlitArr(Sp_Iu_Raw_Slit_Model rawSlitModel);
         object UpdateIsSlitted(ComParaModel comPara, int SLITTING_SRNO);
+        object DtSlitted(ComParaModel comPara);
 
 
     }
@@ -216,6 +217,8 @@ namespace omech.Services
                     { "@SLITTING_LEVEL", model.SLITTING_LEVEL },
                     { "@SLITTING_DATE", model.SLITTING_DATE},
                     { "@DC_NO", model.DC_NO},
+                    { "@SHIFT_TO", model.SHIFT_TO},
+                    { "@SCRAP", model.SCRAP},
                     { "@CREATED_BY", model.USER_SRNO },
                     { "@slitDetails", slitDetailsJson },
                 };
@@ -260,6 +263,41 @@ namespace omech.Services
 
                 // Use the singleton DatabaseHelper to execute the stored procedure
                 var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("UPDATE_IS_SLITTED", parameters);
+
+                if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+
+        } 
+        public object DtSlitted([FromBody] ComParaModel comPara)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@USER_SRNO", comPara.USER_SRNO },
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("DT_SLITTED", parameters);
 
                 if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
                 {

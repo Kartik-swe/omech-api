@@ -60,6 +60,13 @@ namespace omech.Controllers
             var response = _dataService.UpdateIsSlitted(comPara, SLITTING_SRNO);
             return Ok(response);
 
+        } 
+        [HttpGet("DtSlitted")]
+        public IActionResult DtSlitted([FromQuery] ComParaModel comPara)
+        {
+            var response = _dataService.DtSlitted(comPara);
+            return Ok(response);
+
         }
     }
 }

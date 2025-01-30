@@ -20,6 +20,9 @@ namespace omech.Services
         object IuRawSlitArr(Sp_Iu_Raw_Slit_Model rawSlitModel);
         object UpdateIsSlitted(ComParaModel comPara, int SLITTING_SRNO);
         object DtSlitted(ComParaModel comPara);
+        object DtRawMaterialShift(ComParaModel comPara, char MATERIAL_FLAG);
+        object IuRawMaterialShift(IuShiftRawMaterial rawCom);
+        
 
 
     }
@@ -106,7 +109,7 @@ namespace omech.Services
             }
         }
 
-        public object IuRawMaterial([FromBody] IuRawMaterialModel rawMaterialModel)
+        public object IuRawMaterial([FromBody] IuRawMaterialModel rawMaterialModel)  // TWO C_LOCATION
         {
             try
             {
@@ -115,10 +118,9 @@ namespace omech.Services
 
                  {
                     { "@IU_FLAG", rawMaterialModel.IU_FLAG },
-                    { "@VENDOR_SRNO", rawMaterialModel.VENDOR_SRNO },
+                    { "@MATERIAL_C_LOCATION", rawMaterialModel.MATERIAL_C_LOCATION },
                     { "@CHALLAN_NO", rawMaterialModel.CHALLAN_NO },
                     { "@MATERIAL_GRADE_SRNO", rawMaterialModel.MATERIAL_GRADE },
-                    { "@MATERIAL_SHIFT_TO", rawMaterialModel.MATERIAL_SHIFT_TO },
                     { "@MATERIAL_THICKNESS_SRNO", rawMaterialModel.MATERIAL_THICKNESS },
                     { "@MATERIAL_WIDTH", rawMaterialModel.MATERIAL_WIDTH },
                     { "@MATERIAL_WEIGHT", rawMaterialModel.MATERIAL_WEIGHT},
@@ -163,7 +165,7 @@ namespace omech.Services
                     { "@IU_FLAG", model.IU_FLAG },
                     { "@MATERIAL_SRNO", model.MATERIAL_SRNO },
                     { "@SLITTING_SRNO_FK", model.SLITTING_SRNO_FK },
-                    { "@VENDOR_SRNO", model.VENDOR_SRNO },
+                    { "@C_LOCATION", model.C_LOCATION },
                     { "@SLITTING_LEVEL", model.SLITTING_LEVEL },
                     { "@SLITTING_DATE", model.SLITTING_DATE},
                     { "@SLITTING_GRADE_SRNO", model.SLITTING_GRADE_SRNO },
@@ -174,6 +176,7 @@ namespace omech.Services
                     { "@STATUS_SRNO", model.STATUS_SRNO},
                     { "@IS_SLITTED", model.IS_SLITTED},
                     { "@USER_SRNO", model.USER_SRNO },
+                    { "@SLITTING_SCRAP", model.SLITTING_SCRAP },
                     { "@SLITTING_SRNO", model.SLITTING_SRNO },
                 };
 
@@ -212,12 +215,12 @@ namespace omech.Services
 
                  {
                     { "@MATERIAL_SRNO", model.MATERIAL_SRNO },
-                    { "@VENDOR_SRNO", model.VENDOR_SRNO },
+                    //{ "@C_LOCATION", model.C_LOCATION },
                     { "@SLITTING_SRNO_FK", model.SLITTING_SRNO_FK },
                     { "@SLITTING_LEVEL", model.SLITTING_LEVEL },
                     { "@SLITTING_DATE", model.SLITTING_DATE},
                     { "@DC_NO", model.DC_NO},
-                    { "@SHIFT_TO", model.SHIFT_TO},
+                    { "@C_LOCATION", model.C_LOCATION},
                     { "@SCRAP", model.SCRAP},
                     { "@CREATED_BY", model.USER_SRNO },
                     { "@slitDetails", slitDetailsJson },
@@ -298,6 +301,84 @@ namespace omech.Services
 
                 // Use the singleton DatabaseHelper to execute the stored procedure
                 var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("DT_SLITTED", parameters);
+
+                if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+
+        }
+      public object DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@USER_SRNO", comPara.USER_SRNO },
+                    { "@MATERIAL_FLAG", MATERIAL_FLAG},
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("DT_RAW_MATERIAL_SHIFT", parameters);
+
+                if (dataSet.Tables.Count == 0 )
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+
+        }
+        public object IuRawMaterialShift([FromBody] IuShiftRawMaterial rawCom)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@IU_FLAG", rawCom.IU_FLAG },
+                    { "@MATERIAL_SRNO", rawCom.MATERIAL_SRNO },
+                    { "@SLITTING_SRNO", rawCom.SLITTING_SRNO },
+                    { "@FROM_LOCATION", rawCom.FROM_LOCATION },
+                    { "@TO_LOCATION", rawCom.TO_LOCATION },
+                    { "@SHIFT_DATE", rawCom.SHIFT_DATE },
+                    { "@SHIFTING_SRNO", rawCom.SHIFTING_SRNO },
+                    { "@USER_SRNO", rawCom.USER_SRNO },
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("IU_MATERIAL_SHIFT_HISTORY", parameters);
 
                 if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
                 {

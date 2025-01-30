@@ -41,7 +41,7 @@ namespace omech.Controllers
             return Ok(response);
         }
 
-        [HttpPost("IuRawSlit")]
+        [HttpPost("IuRawSlit")] // CHEKC ONCW IS IT USED OR NOT
         public IActionResult IuRawSlit([FromBody] IuRawSlitModel rawSlitModel)
         {
             var response = _dataService.IuRawSlit(rawSlitModel);
@@ -65,6 +65,20 @@ namespace omech.Controllers
         public IActionResult DtSlitted([FromQuery] ComParaModel comPara)
         {
             var response = _dataService.DtSlitted(comPara);
+            return Ok(response);
+
+        }
+        [HttpGet("DtRawMaterialShift")]
+        public IActionResult DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG)
+        {
+            var response = _dataService.DtRawMaterialShift(comPara, MATERIAL_FLAG);
+            return Ok(response);
+
+        } 
+        [HttpPost("IuRawMaterialShift")]
+        public IActionResult IuRawMaterialShift([FromBody] IuShiftRawMaterial iuShiftRawMaterial)
+        {
+            var response = _dataService.IuRawMaterialShift(iuShiftRawMaterial);
             return Ok(response);
 
         }

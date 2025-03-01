@@ -10,10 +10,7 @@
         public decimal MATERIAL_WIDTH { get; set; }
         public decimal MATERIAL_WEIGHT { get; set; }
         public DateTime RECEIVED_DATE { get; set; }
-        public int? MATERIAL_STATUS_SRNO { get; set; }
-
-        public int? MATERIAL_SCRAP {  get; set; }
-        public string? SUPPILERS {  get; set; }
-        public int? MATERIAL_SRNO { get; set; }
+        public int MATERIAL_STATUS_SRNO { get; set; }
+        public int MATERIAL_SRNO { get; set; }
     }
 }

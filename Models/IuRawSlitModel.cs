@@ -12,7 +12,7 @@
         public int? SLITTING_THICKNESS_SRNO { get; set; } // Material Thickness
         public decimal SLITTING_WIDTH { get; set; } // Slitted Material Width
         public decimal SLITTING_WEIGHT { get; set; } // Slitted Material Weight
-        public string DC_NO { get; set; } // Delivery Challan Number
+        public string? DC_NO { get; set; } // Delivery Challan Number
         public decimal? SLITTING_SCRAP { get; set; } // Delivery Challan Number
         public int? STATUS_SRNO { get; set; } // Delivery Challan Number
         public int? IS_SLITTED { get; set; } // Delivery Challan Number

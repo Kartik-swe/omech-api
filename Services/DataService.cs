@@ -20,7 +20,7 @@ namespace omech.Services
         object IuRawSlitArr(Sp_Iu_Raw_Slit_Model rawSlitModel);
         object UpdateIsSlitted(ComParaModel comPara, int SLITTING_SRNO);
         object DtSlitted(ComParaModel comPara);
-        object DtRawMaterialShift(ComParaModel comPara, char MATERIAL_FLAG);
+        object DtRawMaterialShift(ComParaModel comPara, char MATERIAL_FLAG, string? CHALLAN_NO, string? REG_DATE_FROM, string? REG_DATE_TO);
         object IuRawMaterialShift(IuShiftRawMaterial rawCom);
         object DtDashRawInventory(ComParaModel comPara, char? MATERIAL_FLAG, DateTime? F_DATE, DateTime? TO_DATE, int? GRADE_SRNO, int? THICNESS_SRNO, decimal? WIDTH, int? STATUS_SRNO, int? C_LOCATION);
         object DtDashRawInventoryDtl(ComParaModel comPara, char? MATERIAL_FLAG, string MATERIAL_SRNOS ,string? SLITTING_SRNOS );
@@ -350,7 +350,7 @@ namespace omech.Services
             }
 
         }
-      public object DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG)
+      public object DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG, string? CHALLAN_NO, string? REG_DATE_FROM, string? REG_DATE_TO)
         {
             try
             {
@@ -360,6 +360,9 @@ namespace omech.Services
                  {
                     { "@USER_SRNO", comPara.USER_SRNO },
                     { "@MATERIAL_FLAG", MATERIAL_FLAG},
+                    { "@CHALLAN_NO", CHALLAN_NO},
+                    { "@REG_DATE_FROM", REG_DATE_FROM},
+                    { "@REG_DATE_TO", REG_DATE_TO},
                 };
 
 

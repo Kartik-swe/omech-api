@@ -71,9 +71,9 @@ namespace omech.Controllers
 
         }
         [HttpGet("DtRawMaterialShift")]
-        public IActionResult DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG)
+        public IActionResult DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG, string? CHALLAN_NO, string? REG_DATE_FROM, string? REG_DATE_TO)
         {
-            var response = _dataService.DtRawMaterialShift(comPara, MATERIAL_FLAG);
+            var response = _dataService.DtRawMaterialShift(comPara, MATERIAL_FLAG, CHALLAN_NO, REG_DATE_FROM, REG_DATE_TO);
             return Ok(response);
 
         } 

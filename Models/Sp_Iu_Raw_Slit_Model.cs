@@ -10,6 +10,7 @@
         public DateTime SLITTING_DATE { get; set; }
         public string DC_NO { get; set; }
         public Decimal? SCRAP { get; set; }
+        public Decimal? SLITTING_SCRAP_WEIGHT { get; set; }
         public int USER_SRNO { get; set; }
         public List<SlitDetail> SlitDetails { get; set; }
     }

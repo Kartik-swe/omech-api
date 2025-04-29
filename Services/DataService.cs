@@ -3,6 +3,8 @@ using omech.Models;
 using omech.Helpers;
 using System.Data.SqlClient;
 using Newtonsoft.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Data;
 
 namespace omech.Services
 {
@@ -12,15 +14,15 @@ namespace omech.Services
         /// Gets the response for the dataset request.      
         /// </summary>
         /// <returns>A standardized API response object.</returns>
-        object Pl_Common(ComParaModel comPara, String TBL_SRNO);
+        object Pl_Common(ComParaModel comPara, string TBL_SRNO);
         object DtRawMaterial(ComParaModel comPara, string? CHALLAN_NO,DateTime? DT_REG_FROM, DateTime? DT_REG_TO, string? SUPPLIER, int? GRADE_SRNO, int? THICKNESS_SRNO);
         
         object IuRawMaterial(IuRawMaterialModel rawMaterialModel);
         object IuRawSlit(IuRawSlitModel rawSlitModel);
         object IuRawSlitArr(Sp_Iu_Raw_Slit_Model rawSlitModel);
-        object UpdateIsSlitted(ComParaModel comPara, int SLITTING_SRNO);
+        object UpdateIsSlitted(ComParaModel comPara, int SRNO, char STATUS_FLAG, char COIL_FLAG);
         object DtSlitted(ComParaModel comPara);
-        object DtRawMaterialShift(ComParaModel comPara, char MATERIAL_FLAG, string? CHALLAN_NO, string? REG_DATE_FROM, string? REG_DATE_TO);
+        object DtRawMaterialShift(ComParaModel comPara, char MATERIAL_FLAG, string? CHALLAN_NO, string? REG_DATE_FROM, string? REG_DATE_TO, int? GRADE_SRNO, int? THICNESS_SRNO, int? C_LOCATION, int? TUBE_MILL_SRNO);
         object IuRawMaterialShift(IuShiftRawMaterial rawCom);
         object DtDashRawInventory(ComParaModel comPara, char? MATERIAL_FLAG, DateTime? F_DATE, DateTime? TO_DATE, int? GRADE_SRNO, int? THICNESS_SRNO, decimal? WIDTH, int? STATUS_SRNO, int? C_LOCATION);
         object DtDashRawInventoryDtl(ComParaModel comPara, char? MATERIAL_FLAG, string MATERIAL_SRNOS ,string? SLITTING_SRNOS );
@@ -35,11 +37,21 @@ namespace omech.Services
         object IuMGrade(IuMasterPara masterPara);
         object IuMThickness(IuMasterPara masterPara);
         object IuMOD(IuMasterPara masterPara);
+        object IuMLocation(IuMasterPara masterPara);
+        object IuMTubeMill(IuMasterPara masterPara);
 
         object DelMGrade(DelMasterPara masterPara);
         object DelMThickness(DelMasterPara masterPara);
         object DelMOD(DelMasterPara masterPara);
+        object DelMLocation(DelMasterPara masterPara);
 
+        object IuStatusLog(IuStatusLogModel statusLogModel);
+        object IuPipes(IuPipesModel iuPipesModel);
+        object DtPipes(ComParaModel comPara, int? PR_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, int? C_LOCATION, int? PR_LENGTH);
+        object DtPipesLogs(ComParaModel comPara, int? PR_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, int? C_LOCATION, int? PR_LENGTH, int? INV_TYPE, DateTime? DTP_FROM, DateTime? DTP_TO);
+        object IuPipeShiftLocation([FromBody] IuPipeShiftLocation_Model iuPipeShiftLocation);
+        object IuPipeShiftAction([FromBody] IuPipeShiftLocation_Model iuPipeShiftLocation);
+        object IuPipesInvPr([FromBody] IuPipesInvPrModel IuPipesInvPr);
 
 
 
@@ -148,12 +160,15 @@ namespace omech.Services
                     { "@CHALLAN_NO", rawMaterialModel.CHALLAN_NO },
                     { "@MATERIAL_GRADE_SRNO", rawMaterialModel.MATERIAL_GRADE },
                     { "@MATERIAL_THICKNESS_SRNO", rawMaterialModel.MATERIAL_THICKNESS },
+                    { "@MATERIAL_TYPE", rawMaterialModel.MATERIAL_TYPE },
                     { "@MATERIAL_WIDTH", rawMaterialModel.MATERIAL_WIDTH },
                     { "@MATERIAL_WEIGHT", rawMaterialModel.MATERIAL_WEIGHT},
                     { "@RECEIVED_DATE", rawMaterialModel.RECEIVED_DATE},
                     { "@MATERIAL_STATUS_SRNO", rawMaterialModel.MATERIAL_STATUS_SRNO},
                     { "@MATERIAL_SCRAP", rawMaterialModel.MATERIAL_SCRAP},
-                    { "@SUPPILERS", rawMaterialModel.SUPPILERS},
+                    { "@MATERIAL_SCRAP_WEIGHT", rawMaterialModel.MATERIAL_SCRAP_WEIGHT},
+                    { "@SUPPLIER", rawMaterialModel.SUPPLIER},
+                    { "@NOS", rawMaterialModel.NOS},
                     { "@USER_SRNO", rawMaterialModel.USER_SRNO },
                     { "@MATERIAL_SRNO", rawMaterialModel.MATERIAL_SRNO },
                 };
@@ -205,6 +220,7 @@ namespace omech.Services
                     { "@IS_SLITTED", model.IS_SLITTED},
                     { "@USER_SRNO", model.USER_SRNO },
                     { "@SLITTING_SCRAP", model.SLITTING_SCRAP },
+                    { "@SLITTING_SCRAP_WEIGHT", model.SLITTING_SCRAP_WEIGHT},
                     { "@SLITTING_SRNO", model.SLITTING_SRNO },
                 };
 
@@ -250,6 +266,7 @@ namespace omech.Services
                     { "@DC_NO", model.DC_NO},
                     { "@C_LOCATION", model.C_LOCATION},
                     { "@SCRAP", model.SCRAP},
+                    { "@SLITTING_SCRAP_WEIGHT", model.SLITTING_SCRAP_WEIGHT},
                     { "@CREATED_BY", model.USER_SRNO },
                     { "@slitDetails", slitDetailsJson },
                 };
@@ -278,7 +295,7 @@ namespace omech.Services
             }
 
         }
-        public object UpdateIsSlitted([FromBody] ComParaModel comPara, int SLITTING_SRNO)
+        public object UpdateIsSlitted([FromBody] ComParaModel comPara, int SRNO, char STATUS_FLAG, char COIL_FLAG)
         {
             try
             {
@@ -288,7 +305,9 @@ namespace omech.Services
                  {
                     { "@IU_FLAG", 'U' },
                     { "@USER_SRNO", comPara.USER_SRNO },
-                    { "@SLITTING_SRNO", SLITTING_SRNO},
+                    { "@SRNO", SRNO},
+                    { "@STATUS_FLAG", STATUS_FLAG},
+                    { "@COIL_FLAG", COIL_FLAG},
                 };
 
 
@@ -350,7 +369,7 @@ namespace omech.Services
             }
 
         }
-      public object DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG, string? CHALLAN_NO, string? REG_DATE_FROM, string? REG_DATE_TO)
+      public object DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG, string? CHALLAN_NO, string? REG_DATE_FROM, string? REG_DATE_TO, int? GRADE_SRNO, int? THICNESS_SRNO, int? C_LOCATION, int? TUBE_MILL_SRNO)
         {
             try
             {
@@ -363,6 +382,10 @@ namespace omech.Services
                     { "@CHALLAN_NO", CHALLAN_NO},
                     { "@REG_DATE_FROM", REG_DATE_FROM},
                     { "@REG_DATE_TO", REG_DATE_TO},
+                    { "@GRADE_SRNO", GRADE_SRNO},
+                    { "@THICNESS_SRNO", THICNESS_SRNO},
+                    { "@C_LOCATION", C_LOCATION},
+                    { "@TUBE_MILL_SRNO", TUBE_MILL_SRNO},
                 };
 
 
@@ -877,6 +900,88 @@ namespace omech.Services
             }
 
         }
+        public object IuMLocation([FromBody] IuMasterPara masterPara)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@IU_FLAG", masterPara.IU_FLAG},
+                    { "@LOCATION", masterPara.M_NAME},
+                    { "@UOM", masterPara.UOM},
+                    { "@USER_SRNO", masterPara.USER_SRNO},
+                    { "@UT_SRNO", masterPara.UT_SRNO},
+                    { "@VENDOR_SRNO", masterPara.PK_SRNO}
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("IU_M_LOCATION", parameters);
+
+                if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+
+        }
+
+        public object IuMTubeMill([FromBody] IuMasterPara masterPara)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@IU_FLAG", masterPara.IU_FLAG},
+                    { "@MACHINE_TYPE", 'T'},
+                    { "@MACHINE_NAME", masterPara.M_NAME},
+                    { "@UOM", masterPara.UOM},
+                    { "@USER_SRNO", masterPara.USER_SRNO},
+                    { "@UT_SRNO", masterPara.UT_SRNO},
+                    { "@MACHINE_SRNO", masterPara.PK_SRNO}
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("IU_M_MACHINE", parameters);
+
+                if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+
+        }
 
         // MASTER DELLETE Apis
         public object DelMGrade([FromQuery] DelMasterPara masterPara)
@@ -992,5 +1097,447 @@ namespace omech.Services
             }
         }
 
+        public object DelMLocation([FromQuery] DelMasterPara masterPara)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@VENDOR_SRNO", masterPara.PK_SRNO},
+                    { "@USER_SRNO", masterPara.USER_SRNO},
+                    { "@UT_SRNO", masterPara.UT_SRNO},
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("DEL_M_LOCATION", parameters);
+
+                if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+        }
+        public object DelM_MACHINE([FromQuery] DelMasterPara masterPara)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@MACHINE_SRNO", masterPara.PK_SRNO},
+                    { "@USER_SRNO", masterPara.USER_SRNO},
+                    { "@UT_SRNO", masterPara.UT_SRNO},
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("DEL_M_MACHINE", parameters);
+
+                if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+        }
+
+        public object IuStatusLog([FromQuery] IuStatusLogModel statusLogModel)
+        {
+   
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@MATERIAL_SRNO", statusLogModel.MATERIAL_SRNO},
+                    { "@SLITTING_SRNO", statusLogModel.SLITTING_SRNO},
+                    { "@PRE_LOG_STATUS_SRNO", statusLogModel.PRE_LOG_STATUS_SRNO},
+                    { "@DESCRIPTION", statusLogModel.DESCRIPTION},
+                    { "@REMARKS", statusLogModel.REMARKS},
+                    { "@STATUS_CHANGE_DATE", statusLogModel.STATUS_CHANGE_DATE},
+                    { "@USER_SRNO", statusLogModel.USER_SRNO},
+                    { "@UT_SRNO", statusLogModel.UT_SRNO},
+                    { "@LOG_STATUS_SRNO", statusLogModel.LOG_STATUS_SRNO},
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("IU_STATUS_LOG", parameters);
+
+                if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+        }
+
+        public object IuPipes([FromBody] IuPipesModel iuPipesModel)
+        { 
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@IU_FLAG", iuPipesModel.IU_FLAG},
+                    { "@MATERIAL_SRNO", iuPipesModel.MATERIAL_SRNO},
+                    { "@SLITTING_SRNO", iuPipesModel.SLITTING_SRNO},
+                    { "@MACHINE_SRNO", iuPipesModel.MACHINE_SRNO},
+                    { "@OD_SRNO", iuPipesModel.OD_SRNO},
+                    { "@GRADE_SRNO", iuPipesModel.GRADE_SRNO},
+                    { "@THICKNESS_SRNO", iuPipesModel.THICKNESS_SRNO},
+                    { "@WORK_SHIFT_SRNO", iuPipesModel.WORK_SHIFT_SRNO},
+                    { "@C_LOCATION", iuPipesModel.C_LOCATION},
+                    { "@IS_COIL_COMPLETED", iuPipesModel.IS_COIL_COMPLETED},
+                    { "@P_LENGTH", iuPipesModel.P_LENGTH},
+                    { "@PIPE_NOS", iuPipesModel.PIPE_NOS},
+                    { "@PG_SCRAP_WT", iuPipesModel.PG_SCRAP_WT},
+                    { "@P_WEIGHT", iuPipesModel.P_WEIGHT},
+                    { "@REMARKS", iuPipesModel.REMARKS},
+                    { "@TRN_DATE", iuPipesModel.TRN_DATE},
+                    { "@TRN_BY", iuPipesModel.TRN_BY},
+                    { "@TRN_REMARK", iuPipesModel.TRN_REMARK},
+                    { "@UT_SRNO", iuPipesModel.UT_SRNO},
+                    { "@USER_SRNO", iuPipesModel.USER_SRNO},
+                    { "@PG_SRNO", iuPipesModel.PG_SRNO}
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                    var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("IU_PIPES_INV", parameters);
+
+                if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+        }
+
+
+        public object DtPipes([FromQuery] ComParaModel comPara, int? PR_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, int? C_LOCATION, int? PR_LENGTH)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@PR_SRNO", PR_SRNO},
+                    { "@GRADE_SRNO", GRADE_SRNO},
+                    { "@THICKNESS_SRNO", THICKNESS_SRNO},
+                    { "@OD_SRNO", OD_SRNO},
+                    { "@C_LOCATION", C_LOCATION},
+                    { "@PR_LENGTH", PR_LENGTH },
+                    { "@USER_SRNO", comPara.USER_SRNO },
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("DT_PIPES", parameters);
+
+                if (dataSet.Tables.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+
+        }
+        public object DtPipesLogs([FromQuery] ComParaModel comPara, int? PR_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, int? C_LOCATION, int? PR_LENGTH, int? INV_TYPE, DateTime? DTP_FROM, DateTime? DTP_TO)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@PR_SRNO", PR_SRNO},
+                    { "@GRADE_SRNO", GRADE_SRNO},
+                    { "@THICKNESS_SRNO", THICKNESS_SRNO},
+                    { "@OD_SRNO", OD_SRNO},
+                    { "@C_LOCATION", C_LOCATION},
+                    { "@PR_LENGTH", PR_LENGTH },
+                    { "@INV_TYPE", INV_TYPE},
+                    { "@DTP_FROM", DTP_FROM},
+                    { "@DTP_TO", DTP_TO},
+                    { "@USER_SRNO", comPara.USER_SRNO },
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("DT_PIPES_LOGS", parameters);
+
+                if (dataSet.Tables.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+
+        }
+
+        public object IuPipeShiftLocation([FromBody] IuPipeShiftLocation_Model iuPipeShiftLocation)
+        {
+            try
+            {
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                 {
+                    { "@IU_FLAG", iuPipeShiftLocation.USER_SRNO },
+                    { "@PR_INV_SRNO", iuPipeShiftLocation.PR_INV_SRNO},
+                    { "@PR_SRNO", iuPipeShiftLocation.PR_SRNO },
+                    { "@FROM_LOCATION", iuPipeShiftLocation.FROM_LOCATION },
+                    { "@TO_LOCATION", iuPipeShiftLocation.TO_LOCATION},
+                    { "@PIPE_NOS", iuPipeShiftLocation.PIPE_NOS},
+                    { "@TRN_DATE", iuPipeShiftLocation.TRN_DATE},
+                    { "@TRN_BY", iuPipeShiftLocation.TRN_BY},
+                    { "@TRN_REMARK", iuPipeShiftLocation.TRN_REMARK},
+                    { "@USER_SRNO", iuPipeShiftLocation.USER_SRNO },
+                };
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("IU_PIPE_SHIFT_LOCATION", parameters);
+
+                if (dataSet.Tables.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+        }
+
+        public object IuPipeShiftAction([FromBody] IuPipeShiftLocation_Model IuPipeShiftLocation)
+        {
+            try
+            {
+                DataSet dataSet = null;
+
+                if (IuPipeShiftLocation.ACTION_FLAG == "SELL")
+                {
+                    // Prepare the parameters for the stored procedure
+                    var parameters = new Dictionary<string, object>
+
+                     {
+                        { "@IU_FLAG", IuPipeShiftLocation.IU_FLAG },
+                        { "@PR_INV_SRNO", IuPipeShiftLocation.PR_INV_SRNO},
+                        { "@PR_SRNO", IuPipeShiftLocation.PR_SRNO },
+                        { "@PIPE_NOS", IuPipeShiftLocation.PIPE_NOS},
+                        { "@FROM_LOCATION", IuPipeShiftLocation.FROM_LOCATION},
+                        { "@CUSTOMER_NAME", IuPipeShiftLocation.CUSTOMER_NAME},
+                        { "@INVOICE_NUMBER", IuPipeShiftLocation.INVOICE_NUMBER },
+                        { "@TRN_DATE", IuPipeShiftLocation.TRN_DATE},
+                        { "@TRN_BY", IuPipeShiftLocation.TRN_BY},
+                        { "@TRN_REMARK", IuPipeShiftLocation.TRN_REMARK},
+                        { "@USER_SRNO", IuPipeShiftLocation.USER_SRNO },
+                    };
+
+
+                    // Use the singleton DatabaseHelper to execute the stored procedure
+                    dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("SP_SELL_PIPES", parameters);
+                }
+
+                else if (IuPipeShiftLocation.ACTION_FLAG == "SHIFT")
+                {
+                    // Prepare the parameters for the stored procedure
+                    var parameters = new Dictionary<string, object>
+
+                     {
+                        { "@IU_FLAG", IuPipeShiftLocation.IU_FLAG },
+                        { "@PR_INV_SRNO", IuPipeShiftLocation.PR_INV_SRNO},
+                        { "@PR_SRNO", IuPipeShiftLocation.PR_SRNO },
+                        { "@FROM_LOCATION", IuPipeShiftLocation.FROM_LOCATION },
+                        { "@TO_LOCATION", IuPipeShiftLocation.TO_LOCATION},
+                        { "@PIPE_NOS", IuPipeShiftLocation.PIPE_NOS},
+                        { "@TRN_DATE", IuPipeShiftLocation.TRN_DATE},
+                        { "@TRN_BY", IuPipeShiftLocation.TRN_BY},
+                        { "@TRN_REMARK", IuPipeShiftLocation.TRN_REMARK},
+                        { "@USER_SRNO", IuPipeShiftLocation.USER_SRNO },
+                    };
+
+
+                    // Use the singleton DatabaseHelper to execute the stored procedure
+                    dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("IU_PIPE_SHIFT_LOCATION", parameters);
+                }
+                else
+                {
+                    // Prepare the parameters for the stored procedure
+                    var parameters = new Dictionary<string, object>
+
+                     {
+                         { "@IU_FLAG", IuPipeShiftLocation.IU_FLAG },
+                        { "@PR_INV_SRNO", IuPipeShiftLocation.PR_INV_SRNO},
+                        { "@PR_SRNO", IuPipeShiftLocation.PR_SRNO },
+                        { "@PIPE_NOS", IuPipeShiftLocation.PIPE_NOS},
+                        { "@FROM_LOCATION", IuPipeShiftLocation.FROM_LOCATION},
+                        { "@LEASRE_MACHINE_NUMBER", IuPipeShiftLocation.LEASRE_MACHINE_NUMBER},
+                        { "@TRN_DATE", IuPipeShiftLocation.TRN_DATE},
+                        { "@TRN_BY", IuPipeShiftLocation.TRN_BY},
+                        { "@TRN_REMARK", IuPipeShiftLocation.TRN_REMARK},
+                        { "@USER_SRNO", IuPipeShiftLocation.USER_SRNO },
+                    };
+
+
+                    // Use the singleton DatabaseHelper to execute the stored procedure
+                    dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("SP_CUT_PIPES", parameters);
+                }
+                if (dataSet.Tables.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+        }
+        public object IuPipesInvPr([FromBody] IuPipesInvPrModel IuPipesInvPr)
+        {
+            try
+            {
+
+                // Prepare the parameters for the stored procedure
+                var parameters = new Dictionary<string, object>
+
+                    {
+                    { "@IU_FLAG", IuPipesInvPr.USER_SRNO },
+                    { "@FLAG", IuPipesInvPr.FLAG },
+                    { "@PR_INV_SRNO", IuPipesInvPr.PR_INV_SRNO},
+                    { "@PIPE_NOS", IuPipesInvPr.PIPE_NOS},
+                    { "@UT_SRNO", IuPipesInvPr.UT_SRNO },
+                    { "@USER_SRNO", IuPipesInvPr.USER_SRNO },
+                };
+
+
+
+
+                // Use the singleton DatabaseHelper to execute the stored procedure
+                DataSet dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("IU_PIPES_INV_PR", parameters);
+                
+                if (dataSet.Tables.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+
+                // Return success response with the dataset
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+        }
     }
 }

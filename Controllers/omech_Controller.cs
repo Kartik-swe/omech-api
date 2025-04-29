@@ -57,9 +57,9 @@ namespace omech.Controllers
             return Ok(response);
         }
         [HttpGet("UpdateIsSlitted")]
-        public IActionResult UpdateIsSlitted([FromQuery] ComParaModel comPara, int SLITTING_SRNO)
+        public IActionResult UpdateIsSlitted([FromQuery] ComParaModel comPara, int SRNO, char STATUS_FLAG,char COIL_FLAG)
         {
-            var response = _dataService.UpdateIsSlitted(comPara, SLITTING_SRNO);
+            var response = _dataService.UpdateIsSlitted(comPara, SRNO,STATUS_FLAG,COIL_FLAG);
             return Ok(response);
 
         } 
@@ -71,9 +71,9 @@ namespace omech.Controllers
 
         }
         [HttpGet("DtRawMaterialShift")]
-        public IActionResult DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG, string? CHALLAN_NO, string? REG_DATE_FROM, string? REG_DATE_TO)
+        public IActionResult DtRawMaterialShift([FromQuery] ComParaModel comPara, char MATERIAL_FLAG, string? CHALLAN_NO, string? REG_DATE_FROM, string? REG_DATE_TO,int? GRADE_SRNO, int? THICNESS_SRNO, int? C_LOCATION , int? TUBE_MILL_SRNO)
         {
-            var response = _dataService.DtRawMaterialShift(comPara, MATERIAL_FLAG, CHALLAN_NO, REG_DATE_FROM, REG_DATE_TO);
+            var response = _dataService.DtRawMaterialShift(comPara, MATERIAL_FLAG, CHALLAN_NO, REG_DATE_FROM, REG_DATE_TO,GRADE_SRNO, THICNESS_SRNO, C_LOCATION, TUBE_MILL_SRNO);
             return Ok(response);
 
         } 
@@ -169,6 +169,21 @@ namespace omech.Controllers
             var response = _dataService.IuMOD(masterPara);
             return Ok(response);
         }
+        
+        [HttpPost("IuMLocation")]
+        public IActionResult IuMLocation([FromBody] IuMasterPara masterPara)
+        {
+            var response = _dataService.IuMLocation(masterPara);
+            return Ok(response);
+        }
+
+        [HttpPost("IuMTubeMill")]
+        public IActionResult IuMTubeMill([FromBody] IuMasterPara masterPara)
+        {
+            var response = _dataService.IuMTubeMill(masterPara);
+            return Ok(response);
+        }
+
 
         //Master Delete Api
         [HttpDelete("DelMGrade")]
@@ -191,6 +206,70 @@ namespace omech.Controllers
             var response = _dataService.DelMOD(masterPara);
             return Ok(response);
         }
+        [HttpDelete("DelMLocation")]
+        public IActionResult DelMLocation([FromQuery] DelMasterPara masterPara)
+        {
+            var response = _dataService.DelMLocation(masterPara);
+            return Ok(response);
+        }
+
+        // 
+        [HttpPost("IuStatusLog")]
+        public IActionResult IuStatusLog([FromBody] IuStatusLogModel iuStatusLog)
+        {
+            var response = _dataService.IuStatusLog(iuStatusLog);
+            return Ok(response);
+        }
+
+        // 
+        [HttpPost("IuPipes")]
+        public IActionResult IuPipes([FromBody] IuPipesModel iuPipesModel)
+        {
+            var response = _dataService.IuPipes(iuPipesModel);
+            return Ok(response);
+        }
+
+        [HttpGet("DtPipes")]
+        public IActionResult DtPipes([FromQuery] ComParaModel comPara, int? PR_SRNO,int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, int? C_LOCATION, int? PR_LENGTH)
+        {
+            var response = _dataService.DtPipes(comPara, PR_SRNO, GRADE_SRNO,THICKNESS_SRNO,OD_SRNO, C_LOCATION,PR_LENGTH);
+            return Ok(response);
+
+        } 
+        
+        [HttpGet("DtPipesLogs")]
+        public IActionResult DtPipesLogs([FromQuery] ComParaModel comPara, int? PR_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, int? C_LOCATION, int? PR_LENGTH , int? INV_TYPE, DateTime? DTP_FROM, DateTime? DTP_TO)
+        {
+            var response = _dataService.DtPipesLogs(comPara, PR_SRNO, GRADE_SRNO, THICKNESS_SRNO, OD_SRNO, C_LOCATION, PR_LENGTH, INV_TYPE, DTP_FROM,DTP_TO);
+            return Ok(response);
+
+        }
+
+        // Update the lOCATION OF PIPES
+        [HttpPost("IuPipeShiftLocation")]
+        public IActionResult IuPipeShiftLocation([FromBody] IuPipeShiftLocation_Model iuPipeShiftLocation)
+        {
+            var response = _dataService.IuPipeShiftLocation(iuPipeShiftLocation);
+            return Ok(response);
+        }
+        
+        // Update the lOCATION OF PIPES
+        [HttpPost("IuPipeShiftAction")]
+        public IActionResult IuPipeShiftAction([FromBody] IuPipeShiftLocation_Model iuPipeShiftLocation)
+        {
+            var response = _dataService.IuPipeShiftAction(iuPipeShiftLocation);
+            return Ok(response);
+        }
+
+
+        // Update the lOCATION OF PIPES
+        [HttpPost("IuPipesInvPr")]
+        public IActionResult IuPipesInvPr([FromBody] IuPipesInvPrModel IuPipesInvPr)
+        {
+            var response = _dataService.IuPipesInvPr(IuPipesInvPr);
+            return Ok(response);
+        }
+
 
     }
 }

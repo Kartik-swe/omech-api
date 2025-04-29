@@ -14,6 +14,7 @@
         public decimal SLITTING_WEIGHT { get; set; } // Slitted Material Weight
         public string? DC_NO { get; set; } // Delivery Challan Number
         public decimal? SLITTING_SCRAP { get; set; } // Delivery Challan Number
+        public decimal? SLITTING_SCRAP_WEIGHT { get; set; } // Delivery Challan Number
         public int? STATUS_SRNO { get; set; } // Delivery Challan Number
         public int? IS_SLITTED { get; set; } // Delivery Challan Number
         public int SLITTING_SRNO { get; set; } // Slitting Serial Number

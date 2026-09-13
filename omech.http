@@ -1,0 +1,6 @@
+@omech_HostAddress = http://localhost:5149
+
+GET {{omech_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

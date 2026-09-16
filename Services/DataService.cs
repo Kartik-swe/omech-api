@@ -37,6 +37,7 @@ namespace omech.Services
         object DelRawSlit(ComParaModel comPara, int SRNO, bool IS_MOTHER_COIL);
         public object IuShiftStock([FromQuery] ComParaModel comPara, char IU_FLAG, char COIL_FLAG, char STATUS_FLAG, int SRNO);
         object IuMGrade(IuMasterPara masterPara);
+        object DtMGradeDtl([FromQuery] ComParaModel comPara, int GRADE_SRNO);
         object IuMThickness(IuMasterPara masterPara);
         object IuMOD(IuMasterPara masterPara);
         object IuMLocation(IuMasterPara masterPara);
@@ -826,6 +827,7 @@ namespace omech.Services
                     { "@IU_FLAG", masterPara.IU_FLAG},
                     { "@GRADE", masterPara.M_NAME},
                     { "@UOM", masterPara.UOM},
+                    { "@DENSITY", masterPara.DENSITY},
                     { "@USER_SRNO", masterPara.USER_SRNO},
                     { "@UT_SRNO", masterPara.UT_SRNO},
                     { "@GRADE_SRNO", masterPara.PK_SRNO}
@@ -854,6 +856,38 @@ namespace omech.Services
                 return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
             }
 
+        }
+
+        // One grade's full record (including Density) - used by the Grade edit form,
+        // since Pl_Common's Table1 grade dropdown only ever returns {value, label, DENSITY}
+        // as a flat list and editing needs UOM too.
+        public object DtMGradeDtl([FromQuery] ComParaModel comPara, int GRADE_SRNO)
+        {
+            try
+            {
+                var parameters = new Dictionary<string, object>
+                {
+                    { "@GRADE_SRNO", GRADE_SRNO },
+                };
+
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("DT_M_GRADE_DTL", parameters);
+
+                if (dataSet.Tables.Count == 0 || dataSet.Tables[0].Rows.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
         }
 
         public object IuMThickness([FromBody] IuMasterPara masterPara)

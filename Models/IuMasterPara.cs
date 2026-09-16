@@ -12,6 +12,7 @@
         public string? EMAIL { get; set; }
         public string? PHONE { get; set; }
         public string? CONTACT_PERSON { get; set; }
+        public decimal? DENSITY { get; set; }
 
         public int? PK_SRNO { get; set; }
     }

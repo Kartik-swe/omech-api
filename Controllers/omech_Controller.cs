@@ -180,6 +180,14 @@ namespace omech.Controllers
         }
 
         [Authorize]
+        [HttpGet("DtMGradeDtl")]
+        public IActionResult DtMGradeDtl([FromQuery] ComParaModel comPara, int GRADE_SRNO)
+        {
+            var response = _dataService.DtMGradeDtl(comPara, GRADE_SRNO);
+            return Ok(response);
+        }
+
+        [Authorize]
         [HttpPost("IuMThickness")]
         public IActionResult IuMThickness([FromBody] IuMasterPara masterPara)
         {

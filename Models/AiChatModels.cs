@@ -2,11 +2,21 @@ using System.Collections.Generic;
 
 namespace omech.Models
 {
+    /// <summary>
+    /// Request model used to talk to the AI chat service.
+    /// </summary>
     public class AiChatRequest
     {
+        /// <summary>Conversation/session identifier to correlate messages.</summary>
         public string SessionId { get; set; } = string.Empty;
+
+        /// <summary>User prompt or question for the AI service.</summary>
         public string Message { get; set; } = string.Empty;
+
+        /// <summary>Numeric user id (optional)</summary>
         public int USER_SRNO { get; set; }
+
+        /// <summary>Numeric user type id (optional)</summary>
         public int UT_SRNO { get; set; }
     }
 
@@ -34,17 +44,19 @@ namespace omech.Models
 
     public class AiChatResponse
     {
-        // Always present: the headline answer, one or two sentences.
+        /// <summary>Headline answer or summary text.</summary>
         public string Summary { get; set; } = string.Empty;
 
-        // KPI-style numbers for an at-a-glance view.
+        /// <summary>KPI-style key metrics to display.</summary>
         public List<AiChatMetric> KeyMetrics { get; set; } = new();
 
-        // Present for report-style answers: a short written analysis.
-        // Empty for simple conversational replies (e.g. greetings, clarifications).
+        /// <summary>Long-form analysis when applicable.</summary>
         public string Analysis { get; set; } = string.Empty;
 
+        /// <summary>Optional tables returned by the AI assistant.</summary>
         public List<AiChatTable> Tables { get; set; } = new();
+
+        /// <summary>Optional charts returned by the AI assistant.</summary>
         public List<AiChatChart> Charts { get; set; } = new();
     }
 }

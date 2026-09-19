@@ -2,14 +2,61 @@
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using omech.Services;
+using System.Reflection;
+using System.IO;
+using Microsoft.OpenApi.Models;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Omech API",
+        Version = "v1",
+        Description = "Omech Inventory API - endpoints for authentication, MCP, and inventory operations.",
+        Contact = new OpenApiContact
+        {
+            Name = "Omech API Support",
+            Email = "support@omech.local"
+        }
+    });
+
+    // Include XML comments (enable in csproj)
+    var xmlFile = Path.ChangeExtension(Assembly.GetExecutingAssembly().Location, ".xml");
+    if (File.Exists(xmlFile))
+    {
+        options.IncludeXmlComments(xmlFile);
+    }
+
+    // Add JWT Bearer auth support in Swagger UI
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement{
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme{
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference{
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 
 // Added New code
 // Configure CORS (Cross-Origin Resource Sharing)
@@ -27,7 +74,7 @@ var configuration = builder.Configuration;
 var connectionString = configuration.GetConnectionString("db_dev_con");
 
 builder.Services.AddSingleton(new DatabaseHelper(connectionString));
-builder.Services.AddControllers();
+// builder.Services.AddControllers(); // already registered above
 
 
 
@@ -109,12 +156,16 @@ app.Use(async (context, next) =>
 // ---------------------------
 
 // Configure the HTTP request pipeline.
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("swagger/v1/swagger.json", $"My API V1");
-    c.RoutePrefix = string.Empty; // Set Swagger UI as the root endpoint
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Omech API v1");
+        c.RoutePrefix = string.Empty; // Set Swagger UI as the root endpoint
+        c.DocumentTitle = "Omech API Documentation";
+    });
+}
 
 
 

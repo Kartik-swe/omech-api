@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace omech.Controllers
 {
+    /// <summary>
+    /// Sample controller that returns weather forecast data. Kept as example for Swagger documentation.
+    /// </summary>
     [ApiController]
     [Route("[controller]")]
     public class WeatherForecastController : ControllerBase
@@ -18,6 +21,10 @@ namespace omech.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Get a list of sample weather forecast entries.
+        /// </summary>
+        /// <returns>Array of WeatherForecast objects.</returns>
         [HttpGet(Name = "GetWeatherForecast")]
         public IEnumerable<WeatherForecast> Get()
         {

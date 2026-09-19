@@ -3,11 +3,15 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using System.Data.SqlClient;
 using System.Data;
 using Microsoft.AspNetCore.Identity.Data;
 
+/// <summary>
+/// Authentication endpoints for obtaining JWT tokens.
+/// </summary>
 [ApiController]
 [Route("api/auth")]
 public class AuthController : ControllerBase
@@ -19,7 +23,14 @@ public class AuthController : ControllerBase
         _configuration = configuration;
     }
 
+    /// <summary>
+    /// Authenticate a user and return a JWT token on success.
+    /// </summary>
+    /// <param name="request">Login request containing Username and Password.</param>
+    /// <returns>JWT token and basic user info when credentials are valid; 401 Unauthorized otherwise.</returns>
     [HttpPost("login")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public IActionResult Login([FromBody] omech.Models.LoginRequests request)
     {
         string connectionString = _configuration.GetConnectionString("db_dev_con");
@@ -56,6 +67,9 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Generate a signed JWT token for an authenticated user.
+    /// </summary>
     private string GenerateJwtToken(int userId, string username, int role)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");

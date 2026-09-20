@@ -577,6 +577,14 @@ namespace omech.Controllers
         }
 
         [Authorize]
+        [HttpPost("CheckMaterialAvailabilityBatch")]
+        public IActionResult CheckMaterialAvailabilityBatch([FromBody] CheckMaterialAvailabilityBatchRequest request)
+        {
+            var response = _dataService.CheckMaterialAvailabilityBatch(request);
+            return Ok(response);
+        }
+
+        [Authorize]
         [HttpGet("DtQuotation")]
         public IActionResult DtQuotation([FromQuery] ComParaModel comPara, string? QUOTATION_NO, int? PARTY_SRNO, string? STATUS, DateTime? DATE_FROM, DateTime? DATE_TO)
         {

@@ -29,8 +29,6 @@ public class AuthController : ControllerBase
     /// <param name="request">Login request containing Username and Password.</param>
     /// <returns>JWT token and basic user info when credentials are valid; 401 Unauthorized otherwise.</returns>
     [HttpPost("login")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public IActionResult Login([FromBody] omech.Models.LoginRequests request)
     {
         string connectionString = _configuration.GetConnectionString("db_dev_con");

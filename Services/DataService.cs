@@ -83,6 +83,7 @@ namespace omech.Services
         object DtCompanyMaster([FromQuery] ComParaModel comPara);
         object IuCompanyMaster(IuCompanyMasterModel companyMasterModel);
         object IuQuotation(IuQuotationMaster quotationMaster);
+        object CheckMaterialAvailabilityBatch(CheckMaterialAvailabilityBatchRequest request);
         object DtQuotation([FromQuery] ComParaModel comPara, string? QUOTATION_NO, int? PARTY_SRNO, string? STATUS, DateTime? DATE_FROM, DateTime? DATE_TO);
         object DtQuotationDtl([FromQuery] ComParaModel comPara, int QUOTATION_SRNO);
         object DelQuotation([FromQuery] ComParaModel comPara, int QUOTATION_SRNO);
@@ -2685,6 +2686,40 @@ namespace omech.Services
                 };
 
                 var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("IU_QUOTATION", parameters);
+
+                if (dataSet.Tables.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                var result = CommonHelper.SerializeDataSet(dataSet);
+                return CommonHelper.CreateApiResponse(200, "Success", result);
+            }
+            catch (SqlException sqlEx)
+            {
+                return CommonHelper.CreateApiResponse(500, $"SQL Error: {sqlEx.Message}", null);
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+        }
+
+        // Batch material-availability check (auto-highlight for PO Material Mapping) -
+        // reuses the exact matching rules GET_INV_STATUS_SCHEDULE_WISE already uses,
+        // as a lightweight EXISTS-per-combo check rather than full row detail.
+        public object CheckMaterialAvailabilityBatch(CheckMaterialAvailabilityBatchRequest request)
+        {
+            try
+            {
+                string combosJson = JsonConvert.SerializeObject(request.COMBOS);
+
+                var parameters = new Dictionary<string, object>
+                {
+                    { "@COMBOS_JSON", combosJson },
+                };
+
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("CHECK_MATERIAL_AVAILABILITY_BATCH", parameters);
 
                 if (dataSet.Tables.Count == 0)
                 {

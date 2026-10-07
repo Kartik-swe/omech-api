@@ -70,7 +70,7 @@ namespace omech.Services
         object DsPo([FromQuery] ComParaModel comPara, string? ITEM_TYPE, string? TXT_SEARCH, DateTime? FROM_DATE, DateTime? TO_DATE);
         object DispPoAutoMap([FromQuery] ComParaModel comPara, string? SCHEDULE_SRNOS, string? SCHEDULE_DT_SRNOS, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, int? PARTY_SRNO, string? PO_NUMBER, DateTime? ENTRY_DATE_FROM, DateTime? ENTRY_DATE_TO, DateTime? DELIVERY_DATE_FROM, DateTime? DELIVERY_DATE_TO, int IS_GROUPBY_LENGTH);
         object DtDispatchAnalysis([FromQuery] ComParaModel comPara, int? PARTY_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, DateTime? DISPATCH_DATE_FROM, DateTime? DISPATCH_DATE_TO, string? PO_NUMBER);
-        object DtPoAnalysis([FromQuery] ComParaModel comPara, int? PARTY_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, DateTime? DATE_FROM, DateTime? DATE_TO, string? PO_NUMBER);
+        object DtPoAnalysis([FromQuery] ComParaModel comPara, int? PARTY_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, DateTime? DATE_FROM, DateTime? DATE_TO, string? PO_NUMBER, string? ITEM_TYPE);
         object DtScheduleAnalysis([FromQuery] ComParaModel comPara, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, string? PARTY_NAME, string? PO_NUMBER, DateTime? ENTRY_DATE_FROM, DateTime? ENTRY_DATE_TO, DateTime? DELIVERY_DATE_FROM, DateTime? DELIVERY_DATE_TO);
         object IuThresholdMaster([FromBody] IuThresholdMasterModel IuThresholdMaster);
         object DtThresholdMaster([FromQuery] ComParaModel comPara, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, decimal? REQUIRED_WIDTH);
@@ -2261,7 +2261,7 @@ namespace omech.Services
         // needs, computed server-side in one round trip (see
         // sql/03_create_dt_po_analysis.sql for the full breakdown of what
         // each returned table contains and how it's scoped).
-        public object DtPoAnalysis([FromQuery] ComParaModel comPara, int? PARTY_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, DateTime? DATE_FROM, DateTime? DATE_TO, string? PO_NUMBER)
+        public object DtPoAnalysis([FromQuery] ComParaModel comPara, int? PARTY_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, DateTime? DATE_FROM, DateTime? DATE_TO, string? PO_NUMBER, string? ITEM_TYPE)
         {
             try
             {
@@ -2274,6 +2274,7 @@ namespace omech.Services
                     { "@DATE_FROM", DATE_FROM },
                     { "@DATE_TO", DATE_TO },
                     { "@PO_NUMBER", PO_NUMBER },
+                    { "@ITEM_TYPE", string.IsNullOrWhiteSpace(ITEM_TYPE) ? null : ITEM_TYPE },
                     { "@USER_SRNO", comPara.USER_SRNO },
                 };
 

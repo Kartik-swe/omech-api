@@ -448,9 +448,9 @@ namespace omech.Controllers
 
         [Authorize]
         [HttpGet("DtPoAnalysis")]
-        public IActionResult DtPoAnalysis([FromQuery] ComParaModel comPara, int? PARTY_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, DateTime? DATE_FROM, DateTime? DATE_TO, string? PO_NUMBER)
+        public IActionResult DtPoAnalysis([FromQuery] ComParaModel comPara, int? PARTY_SRNO, int? GRADE_SRNO, int? THICKNESS_SRNO, int? OD_SRNO, DateTime? DATE_FROM, DateTime? DATE_TO, string? PO_NUMBER, string? ITEM_TYPE)
         {
-            var response = _dataService.DtPoAnalysis(comPara, PARTY_SRNO, GRADE_SRNO, THICKNESS_SRNO, OD_SRNO, DATE_FROM, DATE_TO, PO_NUMBER);
+            var response = _dataService.DtPoAnalysis(comPara, PARTY_SRNO, GRADE_SRNO, THICKNESS_SRNO, OD_SRNO, DATE_FROM, DATE_TO, PO_NUMBER, ITEM_TYPE);
             return Ok(response);
         }
 

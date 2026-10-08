@@ -198,7 +198,7 @@ jobs:
           {
             printf 'ROOT=%q\n' "$ROOT"
             printf 'SHA=%q\n' "$SHA"
-            printf 'DEV_IP=%q\n' "$DEV_IP"
+            printf 'export DEV_IP=%q\n' "$DEV_IP"
             cat remote-body.sh
           } > "deploy-backend-$SHA.sh"
 

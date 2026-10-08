@@ -37,6 +37,7 @@ concurrency:
 
 env:
   REMOTE_ROOT: /omech
+  MIN_FREE_MB: 300   # deploy refuses to start if the droplet has less free memory
 
 jobs:
   build:
@@ -108,6 +109,17 @@ jobs:
               echo "Host key lookup attempt $i failed - retrying in 15s"; sleep 15
             done
             [ -s ~/.ssh/known_hosts ] || { echo "::error::Could not read the droplet's SSH host key"; exit 1; }
+          fi
+
+      - name: Check droplet has free memory
+        env:
+          TARGET: ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}
+        run: |
+          free_mb=$(ssh -i ~/.ssh/id_deploy -o ConnectTimeout=20 "$TARGET" "awk '/MemAvailable/ {print int(\$2/1024)}' /proc/meminfo")
+          echo "Droplet free memory: ${free_mb} MB (minimum ${MIN_FREE_MB} MB)"
+          if [ "${free_mb:-0}" -lt "$MIN_FREE_MB" ]; then
+            echo "::error::Droplet is low on memory (${free_mb} MB free) - not deploying. Nothing was changed."
+            exit 1
           fi
 
       - name: Upload build

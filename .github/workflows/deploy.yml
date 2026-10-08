@@ -1,0 +1,167 @@
+# Build on every PR; build + deploy to the DigitalOcean droplet when a PR is
+# merged into main (or when run manually from the Actions tab).
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   DROPLET_HOST     droplet IP / hostname
+#   DROPLET_USER     SSH user (must be able to run docker)
+#   DROPLET_SSH_KEY  private key whose public key is in that user's authorized_keys
+# Optional repo VARIABLE (Settings -> Secrets and variables -> Actions -> Variables):
+#   DEV_IP   your current public IP. On every deploy it is written as the LAST
+#            entry of "AllowedIPs" in the droplet's appsettings.json, so you can
+#            log in and verify. When your IP changes: Actions -> this workflow ->
+#            Run workflow -> enter the new IP (overrides DEV_IP for that run).
+# Optional secret:
+#   DROPLET_KNOWN_HOSTS  output of `ssh-keyscan <host>` (pins the host key;
+#                        falls back to ssh-keyscan at deploy time if unset)
+#
+# The droplet keeps its own appsettings*.json (prod connection string, JWT
+# secret, API keys) - this workflow never ships or overwrites them.
+
+name: API - build & deploy
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dev_ip:
+        description: 'Your current public IP (set as last AllowedIPs entry). Blank = use DEV_IP variable'
+        required: false
+        default: ''
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+env:
+  REMOTE_ROOT: /omech
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish
+        run: dotnet publish omech.csproj -c Release -o out
+
+      - name: Strip config files (droplet keeps its own)
+        run: rm -f out/appsettings*.json
+
+      - name: Package
+        if: github.event_name != 'pull_request'
+        run: tar -czf backend.tar.gz -C out .
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: backend
+          path: backend.tar.gz
+          retention-days: 7
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend
+
+      - name: Resolve dev IP
+        id: ip
+        env:
+          INPUT_IP: ${{ github.event.inputs.dev_ip }}
+          VAR_IP: ${{ vars.DEV_IP }}
+        run: |
+          ip="${INPUT_IP:-$VAR_IP}"
+          ip="$(printf '%s' "$ip" | tr -d '[:space:]')"
+          if [ -n "$ip" ] && ! printf '%s' "$ip" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
+            echo "::error::'$ip' is not a valid IPv4 address"; exit 1
+          fi
+          echo "value=$ip" >> "$GITHUB_OUTPUT"
+          echo "Dev IP for this deploy: ${ip:-<none - AllowedIPs left unchanged>}"
+
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DROPLET_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DROPLET_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DROPLET_HOST }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          if [ -n "$KNOWN_HOSTS" ]; then printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else ssh-keyscan -H "$HOST" > ~/.ssh/known_hosts; fi
+
+      - name: Upload build
+        run: |
+          scp -i ~/.ssh/id_deploy backend.tar.gz \
+            "${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}:/tmp/backend-${{ github.sha }}.tar.gz"
+
+      - name: Deploy on droplet
+        run: |
+          ssh -i ~/.ssh/id_deploy "${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}" \
+            "ROOT='${{ env.REMOTE_ROOT }}' SHA='${{ github.sha }}' DEV_IP='${{ steps.ip.outputs.value }}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$ROOT"
+          DC="docker compose"; $DC version >/dev/null 2>&1 || DC="docker-compose"
+          PKG="/tmp/backend-$SHA.tar.gz"
+          NEW="$ROOT/releases/backend-$SHA"
+
+          # 1) DB backup first (existing script) - cheap insurance
+          if [ -x "$ROOT/backup_sql.sh" ]; then "$ROOT/backup_sql.sh" || echo "WARN: DB backup failed, continuing"; fi
+
+          # 2) Unpack new build
+          rm -rf "$NEW" && mkdir -p "$NEW" && tar -xzf "$PKG" -C "$NEW" && rm -f "$PKG"
+
+          # 3) Keep the current build for rollback
+          rm -rf "$ROOT/backend.prev" && cp -a "$ROOT/backend" "$ROOT/backend.prev"
+
+          # 4) Swap files in. appsettings*.json and Dockerfile are droplet-only
+          #    and are never removed or overwritten.
+          find "$ROOT/backend" -mindepth 1 -maxdepth 1 \
+            ! -name 'appsettings*.json' ! -name 'Dockerfile' -exec rm -rf {} +
+          cp -a "$NEW/." "$ROOT/backend/"
+
+          # 5) Put your current IP as the LAST "AllowedIPs" entry (text edit,
+          #    so comments/formatting in appsettings.json are preserved).
+          if [ -n "$DEV_IP" ]; then
+            CFG="$ROOT/backend/appsettings.json"
+            cp -a "$CFG" "$CFG.bak"
+            perl -0pi -e 's/("AllowedIPs"\s*:\s*\[[^\]]*")[^"]*("\s*\])/${1}$ENV{DEV_IP}${2}/s' "$CFG"
+            if grep -q "\"$DEV_IP\"" "$CFG"; then echo "AllowedIPs: last entry set to $DEV_IP"
+            else echo "WARN: could not update AllowedIPs - check appsettings.json"; cp -a "$CFG.bak" "$CFG"; fi
+          fi
+
+          # 6) Rebuild + restart only the backend container
+          $DC up -d --build --no-deps backend
+
+          # 7) Health check: any HTTP response from Kestrel means it started
+          ok=0
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/ || true)
+            if [ "$code" != "000" ]; then ok=1; break; fi
+            sleep 3
+          done
+
+          if [ "$ok" != 1 ]; then
+            echo "ERROR: backend did not come up - rolling back"
+            docker logs --tail 50 backend || true
+            find "$ROOT/backend" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            cp -a "$ROOT/backend.prev/." "$ROOT/backend/"
+            $DC up -d --build --no-deps backend
+            exit 1
+          fi
+
+          # Keep only the 5 most recent releases
+          ls -1dt "$ROOT"/releases/backend-* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+          docker image prune -f >/dev/null || true
+          echo "Backend deployed: $SHA"
+          REMOTE

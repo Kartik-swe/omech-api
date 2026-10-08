@@ -37,6 +37,7 @@ concurrency:
 
 env:
   REMOTE_ROOT: /omech
+  MIN_FREE_MB: 300   # deploy refuses to start if the droplet has less free memory
 
 jobs:
   build:
@@ -97,18 +98,47 @@ jobs:
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
-          if [ -n "$KNOWN_HOSTS" ]; then printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          else ssh-keyscan -H "$HOST" > ~/.ssh/known_hosts; fi
+          if [ -n "$KNOWN_HOSTS" ]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            # Fetch only the ed25519 host key, with retries - a busy droplet
+            # can make a plain ssh-keyscan time out and fail the whole job.
+            for i in 1 2 3 4 5; do
+              ssh-keyscan -T 30 -t ed25519 -H "$HOST" > ~/.ssh/known_hosts 2>/dev/null || true
+              [ -s ~/.ssh/known_hosts ] && break
+              echo "Host key lookup attempt $i failed - retrying in 15s"; sleep 15
+            done
+            [ -s ~/.ssh/known_hosts ] || { echo "::error::Could not read the droplet's SSH host key"; exit 1; }
+          fi
+
+      - name: Check droplet has free memory
+        env:
+          TARGET: ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}
+        run: |
+          free_mb=$(ssh -i ~/.ssh/id_deploy -o ConnectTimeout=20 "$TARGET" "awk '/MemAvailable/ {print int(\$2/1024)}' /proc/meminfo")
+          echo "Droplet free memory: ${free_mb} MB (minimum ${MIN_FREE_MB} MB)"
+          if [ "${free_mb:-0}" -lt "$MIN_FREE_MB" ]; then
+            echo "::error::Droplet is low on memory (${free_mb} MB free) - not deploying. Nothing was changed."
+            exit 1
+          fi
 
       - name: Upload build
         run: |
           scp -i ~/.ssh/id_deploy backend.tar.gz \
             "${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}:/tmp/backend-${{ github.sha }}.tar.gz"
 
+      # The deploy script runs DETACHED on the droplet (nohup/setsid), so a
+      # dropped SSH connection (e.g. during a long silent `npm install` in the
+      # image build) can't kill it half-way. GitHub just polls its log + exit
+      # status over short SSH calls.
       - name: Deploy on droplet
+        env:
+          TARGET: ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}
+          ROOT: ${{ env.REMOTE_ROOT }}
+          SHA: ${{ github.sha }}
+          DEV_IP: ${{ steps.ip.outputs.value }}
         run: |
-          ssh -i ~/.ssh/id_deploy "${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}" \
-            "ROOT='${{ env.REMOTE_ROOT }}' SHA='${{ github.sha }}' DEV_IP='${{ steps.ip.outputs.value }}' bash -s" <<'REMOTE'
+          cat > remote-body.sh <<'REMOTE'
           set -euo pipefail
           cd "$ROOT"
           DC="docker compose"; $DC version >/dev/null 2>&1 || DC="docker-compose"
@@ -165,3 +195,33 @@ jobs:
           docker image prune -f >/dev/null || true
           echo "Backend deployed: $SHA"
           REMOTE
+          {
+            printf 'ROOT=%q\n' "$ROOT"
+            printf 'SHA=%q\n' "$SHA"
+            printf 'DEV_IP=%q\n' "$DEV_IP"
+            cat remote-body.sh
+          } > "deploy-backend-$SHA.sh"
+
+          SSHO=(-i ~/.ssh/id_deploy -o ServerAliveInterval=15 -o ServerAliveCountMax=8 -o ConnectTimeout=20)
+          RUN="/tmp/deploy-backend-$SHA"
+          scp "${SSHO[@]}" "deploy-backend-$SHA.sh" "$TARGET:$RUN.sh"
+          ssh "${SSHO[@]}" "$TARGET" "rm -f $RUN.status $RUN.log; nohup setsid bash -c 'bash $RUN.sh > $RUN.log 2>&1; echo \$? > $RUN.status' > /dev/null 2>&1 < /dev/null &"
+          echo "Deploy started on droplet; following $RUN.log"
+
+          shown=0; status=""
+          for i in $(seq 1 120); do            # up to 20 minutes
+            sleep 10
+            total=$(ssh "${SSHO[@]}" "$TARGET" "wc -l < $RUN.log 2>/dev/null || echo 0" 2>/dev/null) || continue
+            total=${total//[^0-9]/}; total=${total:-0}
+            if [ "$total" -gt "$shown" ]; then
+              ssh "${SSHO[@]}" "$TARGET" "sed -n '$((shown+1)),${total}p' $RUN.log" && shown=$total
+            fi
+            status=$(ssh "${SSHO[@]}" "$TARGET" "cat $RUN.status 2>/dev/null" 2>/dev/null || true)
+            status=${status//[^0-9]/}
+            [ -n "$status" ] && break
+          done
+
+          ssh "${SSHO[@]}" "$TARGET" "sed -n '$((shown+1)),\$p' $RUN.log" || true
+          if [ -z "$status" ]; then echo "::error::Timed out waiting for the deploy to finish - check $RUN.log on the droplet"; exit 1; fi
+          ssh "${SSHO[@]}" "$TARGET" "rm -f $RUN.sh $RUN.status" || true
+          exit "$status"

@@ -84,6 +84,10 @@ builder.Services.AddHttpClient<AnthropicClient>();
 builder.Services.AddScoped<AiToolCatalog>();
 builder.Services.AddScoped<IAiChatService, AiChatService>();
 
+// Device registration (phones outside the allowed IPs) - see Helpers/DeviceAccess.cs
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IDeviceService, DeviceService>();
+
 // Added JWT Authentication
 var jwtSettings = configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"]);
@@ -139,7 +143,18 @@ app.Use(async (context, next) =>
 
     //var ip = context.Connection.RemoteIpAddress?.MapToIPv4().ToString();
 
-    if (ip != null && allowedIps.Contains(ip))
+    var ipAllowed = ip != null && allowedIps.Contains(ip);
+    context.Items[omech.Helpers.DeviceAccess.IpAllowedItem] = ipAllowed;
+    context.Items[omech.Helpers.DeviceAccess.ClientIpItem] = ip;
+
+    if (ipAllowed)
+    {
+        await next();
+    }
+    // Not an allowed IP: let through only the device-registration endpoints
+    // (they check credentials / rate-limit themselves) and approved devices.
+    else if (omech.Helpers.DeviceAccess.IsPublicPath(context.Request.Path)
+             || omech.Helpers.DeviceAccess.IsApprovedDevice(context, ip))
     {
         await next();
     }

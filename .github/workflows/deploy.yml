@@ -16,6 +16,11 @@
 #
 # The droplet keeps its own appsettings*.json (prod connection string, JWT
 # secret, API keys) - this workflow never ships or overwrites them.
+#
+# DB scripts: put them in db/migrations/ as NNNN_name.sql. On deploy, after the
+# DB backup and BEFORE the new API goes live, every script that has not run yet
+# is run once (deploy/run-migrations.sh, tracked in DB_MIGRATION_LOG). If one
+# fails, the deploy stops and the running API is left unchanged.
 
 name: API - build & deploy
 
@@ -55,9 +60,29 @@ jobs:
       - name: Strip config files (droplet keeps its own)
         run: rm -f out/appsettings*.json
 
+      - name: Check DB script names
+        run: |
+          bad=0
+          for f in db/migrations/*; do
+            [ -e "$f" ] || continue
+            n=$(basename "$f")
+            if ! printf '%s' "$n" | grep -Eq '^[0-9]{4}_[A-Za-z0-9_]+\.sql$'; then
+              echo "::error::Bad DB script name '$n' - use NNNN_short_name.sql"; bad=1
+            fi
+          done
+          dups=$(ls db/migrations 2>/dev/null | cut -c1-4 | sort | uniq -d)
+          if [ -n "$dups" ]; then echo "::error::Duplicate DB script numbers: $dups"; bad=1; fi
+          bash -n deploy/run-migrations.sh || bad=1
+          echo "DB scripts in this build:"; ls -1 db/migrations 2>/dev/null || echo "(none)"
+          exit $bad
+
       - name: Package
         if: github.event_name != 'pull_request'
-        run: tar -czf backend.tar.gz -C out .
+        run: |
+          mkdir -p out/__deploy/migrations
+          cp deploy/run-migrations.sh out/__deploy/
+          cp db/migrations/*.sql out/__deploy/migrations/ 2>/dev/null || true
+          tar -czf backend.tar.gz -C out .
 
       - uses: actions/upload-artifact@v4
         if: github.event_name != 'pull_request'
@@ -145,11 +170,26 @@ jobs:
           PKG="/tmp/backend-$SHA.tar.gz"
           NEW="$ROOT/releases/backend-$SHA"
 
-          # 1) DB backup first (existing script) - cheap insurance
-          if [ -x "$ROOT/backup_sql.sh" ]; then "$ROOT/backup_sql.sh" || echo "WARN: DB backup failed, continuing"; fi
-
-          # 2) Unpack new build
+          # 1) Unpack new build; take the deploy tools / DB scripts out of it
           rm -rf "$NEW" && mkdir -p "$NEW" && tar -xzf "$PKG" -C "$NEW" && rm -f "$PKG"
+          TOOLS="$ROOT/releases/deploy-$SHA"
+          rm -rf "$TOOLS"
+          if [ -d "$NEW/__deploy" ]; then mv "$NEW/__deploy" "$TOOLS"; fi
+
+          PENDING=0
+          if [ -f "$TOOLS/run-migrations.sh" ]; then
+            PENDING=$(bash "$TOOLS/run-migrations.sh" pending "$TOOLS/migrations")
+          fi
+          echo "DB scripts to run: $PENDING"
+
+          # 2) DB backup first. Required when DB scripts will run; otherwise a
+          #    failed backup is only a warning (as before).
+          if [ "$PENDING" -gt 0 ]; then
+            "$ROOT/backup_sql.sh" || { echo "ERROR: DB backup failed - not running DB scripts, nothing was changed"; exit 1; }
+            bash "$TOOLS/run-migrations.sh" apply "$TOOLS/migrations" "$SHA"
+          elif [ -x "$ROOT/backup_sql.sh" ]; then
+            "$ROOT/backup_sql.sh" || echo "WARN: DB backup failed, continuing"
+          fi
 
           # 3) Keep the current build for rollback
           rm -rf "$ROOT/backend.prev" && cp -a "$ROOT/backend" "$ROOT/backend.prev"
@@ -192,6 +232,7 @@ jobs:
 
           # Keep only the 5 most recent releases
           ls -1dt "$ROOT"/releases/backend-* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+          ls -1dt "$ROOT"/releases/deploy-* 2>/dev/null | tail -n +6 | xargs -r rm -rf
           docker image prune -f >/dev/null || true
           echo "Backend deployed: $SHA"
           REMOTE

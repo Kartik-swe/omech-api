@@ -52,12 +52,14 @@ namespace omech.Services
                     }
                 }
 
-                return CommonHelper.CreateApiResponse(200, "Success", new
+                // Dictionary (not an anonymous object) so the JSON keys stay exactly
+                // as written - ASP.NET camel-cases property names (IP_ALLOWED -> iP_ALLOWED).
+                return CommonHelper.CreateApiResponse(200, "Success", new Dictionary<string, object?>
                 {
-                    IP_ALLOWED = ipAllowed,
-                    DEVICE_STATUS = deviceStatus,   // NONE / PENDING / APPROVED / EXPIRED / REJECTED / REVOKED
-                    DEVICE_NAME = deviceName,
-                    EXPIRES_AT = expiresAt,
+                    ["IP_ALLOWED"] = ipAllowed,
+                    ["DEVICE_STATUS"] = deviceStatus,   // NONE / PENDING / APPROVED / EXPIRED / REJECTED / REVOKED
+                    ["DEVICE_NAME"] = deviceName,
+                    ["EXPIRES_AT"] = expiresAt,
                 });
             }
             catch (Exception ex)
@@ -104,7 +106,7 @@ namespace omech.Services
                 }
 
                 // The key is returned exactly once; only its hash is stored.
-                return CommonHelper.CreateApiResponse(200, msg, new { DEVICE_KEY = key });
+                return CommonHelper.CreateApiResponse(200, msg, new Dictionary<string, object> { ["DEVICE_KEY"] = key });
             }
             catch (Exception ex)
             {
@@ -129,9 +131,9 @@ namespace omech.Services
                 }
 
                 var result = CommonHelper.SerializeDataSet(ds);
-                return CommonHelper.CreateApiResponse(200, "Success", new
+                return CommonHelper.CreateApiResponse(200, "Success", new Dictionary<string, object>
                 {
-                    Table = ds.Tables.Count > 1 ? result["Table1"] : new List<Dictionary<string, object>>()
+                    ["Table"] = ds.Tables.Count > 1 ? result["Table1"] : new List<Dictionary<string, object>>()
                 });
             }
             catch (Exception ex)

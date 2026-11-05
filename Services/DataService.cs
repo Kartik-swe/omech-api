@@ -28,6 +28,7 @@ namespace omech.Services
         object IuRawMaterialShift(IuShiftRawMaterial rawCom);
         object DtDashRawInventory(ComParaModel comPara, char? MATERIAL_FLAG, DateTime? F_DATE, DateTime? TO_DATE, int? GRADE_SRNO, int? THICNESS_SRNO, decimal? WIDTH, int? STATUS_SRNO, int? C_LOCATION);
         object DtDashRawInventoryDtl(ComParaModel comPara, char? MATERIAL_FLAG, string MATERIAL_SRNOS ,string? SLITTING_SRNOS );
+        object DtNonMovingStock(ComParaModel comPara, int? DAYS, char? ITEM_TYPE, int? GRADE_SRNO, int? C_LOCATION);
         object DtUsers(ComParaModel comPara);
         object DtUserTypes(ComParaModel comPara);
         object IuUser(IuUserModel userModel);
@@ -530,6 +531,35 @@ namespace omech.Services
                 return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
             }
         }
+        // Non-moving stock report (coils, slits, pipes not moved for DAYS or more) - read only
+        public object DtNonMovingStock(ComParaModel comPara, int? DAYS, char? ITEM_TYPE, int? GRADE_SRNO, int? C_LOCATION)
+        {
+            try
+            {
+                var parameters = new Dictionary<string, object>
+                {
+                    { "@DAYS", DAYS ?? 60 },
+                    { "@ITEM_TYPE", ITEM_TYPE ?? 'A' },
+                    { "@GRADE_SRNO", GRADE_SRNO },
+                    { "@C_LOCATION", C_LOCATION },
+                    { "@USER_SRNO", comPara.USER_SRNO },
+                };
+
+                var dataSet = _databaseHelper.ExecuteStoredProcedureAsDataSet("DT_NON_MOVING_STOCK", parameters);
+
+                if (dataSet.Tables.Count == 0)
+                {
+                    return CommonHelper.CreateApiResponse(204, "No data found.", null);
+                }
+
+                return CommonHelper.CreateApiResponse(200, "Success", CommonHelper.SerializeDataSet(dataSet));
+            }
+            catch (Exception ex)
+            {
+                return CommonHelper.CreateApiResponse(500, $"Error: {ex.Message}", null);
+            }
+        }
+
         public object DtDashRawInventoryDtl(ComParaModel comPara, char? MATERIAL_FLAG, string MATERIAL_SRNOS, string? SLITTING_SRNOS)
         {
             try

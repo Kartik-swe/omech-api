@@ -115,6 +115,15 @@ namespace omech.Controllers
             return Ok(response);
         }
 
+        // Non-moving stock report (read only)
+        [Authorize]
+        [HttpGet("DtNonMovingStock")]
+        public IActionResult DtNonMovingStock([FromQuery] ComParaModel comPara, int? DAYS, char? ITEM_TYPE, int? GRADE_SRNO, int? C_LOCATION)
+        {
+            var response = _dataService.DtNonMovingStock(comPara, DAYS, ITEM_TYPE, GRADE_SRNO, C_LOCATION);
+            return Ok(response);
+        }
+
         // Get Method for get users
         [Authorize]
         [HttpGet("DtUsers")]
